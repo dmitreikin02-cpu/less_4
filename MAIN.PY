@@ -486,7 +486,6 @@ class ExcelProcessor:
             'Заказ из магазина',
             'Разбивка по этажам',
             'Разбивка по задачам',
-            'Разные дни сборки',
             'Разные люди',
             'Хвосты в задаче'
         ]
@@ -494,16 +493,27 @@ class ExcelProcessor:
         
         for i, row_name in enumerate(row_names):
             row_data = {'№': i + 1, 'Причина': row_name}
-            total_count = sum(analysis_data.get(family, {}).get(row_name, 0) for family in families)
+            if row_name == 'Разные люди':
+                total_count = sum(
+                    analysis_data.get(family, {}).get('Разные люди', 0) + 
+                    analysis_data.get(family, {}).get('Разные дни сборки', 0) 
+                    for family in families
+                )
+            else:
+                total_count = sum(analysis_data.get(family, {}).get(row_name, 0) for family in families)
             row_data['Кол-во'] = total_count
             total_all = sum(analysis_data.get(family, {}).get('Всего', 0) for family in families)
-            row_data['%'] = f"{(total_count / total_all * 100):.1f}%" if total_all > 0 else "0.0%"
+            row_data['%'] = f"{(total_count / total_all * 100):.1f}".replace('.', ',') + '%' if total_all > 0 else "0,0%"
             
             for family in families:
-                family_count = analysis_data.get(family, {}).get(row_name, 0)
+                if row_name == 'Разные люди':
+                    family_count = (analysis_data.get(family, {}).get('Разные люди', 0) + 
+                                  analysis_data.get(family, {}).get('Разные дни сборки', 0))
+                else:
+                    family_count = analysis_data.get(family, {}).get(row_name, 0)
                 family_total = analysis_data.get(family, {}).get('Всего', 0)
                 row_data[family] = family_count
-                row_data[f'% {family}'] = f"{(family_count / family_total * 100):.1f}%" if family_total > 0 else "0.0%"
+                row_data[f'% {family}'] = f"{(family_count / family_total * 100):.1f}".replace('.', ',') + '%' if family_total > 0 else "0,0%"
             rows_data.append(row_data)
         
         final_columns = ['№', 'Причина', 'Кол-во', '%', 'DUB', '% DUB', 'ECRU', '% ECRU', 'MAAG', '% MAAG', 'VILET', '% VILET']
@@ -1373,16 +1383,16 @@ class DataProcessor:
             }).reset_index()
 
             # Расчет процентов для дневной агрегации
-            daily_agg['% Менее 4-х'] = (daily_agg['Менее 4-х'] / daily_agg['Всего коробов'] * 100).round(1).fillna(0)
-            daily_agg['% Менее 4-х (DUB)'] = (daily_agg['Менее 4-х (DUB)'] / daily_agg['Всего (DUB)'] * 100).round(1).fillna(0)
-            daily_agg['% Менее 4-х (ECRU)'] = (daily_agg['Менее 4-х (ECRU)'] / daily_agg['Всего (ECRU)'] * 100).round(1).fillna(0)
-            daily_agg['% Менее 4-х (MAAG)'] = (daily_agg['Менее 4-х (MAAG)'] / daily_agg['Всего (MAAG)'] * 100).round(1).fillna(0)
-            daily_agg['% Менее 4-х (VILET)'] = (daily_agg['Менее 4-х (VILET)'] / daily_agg['Всего (VILET)'] * 100).round(1).fillna(0)
+            daily_agg['% Менее 4-х'] = (daily_agg['Менее 4-х'] / daily_agg['Всего коробов'] * 100).round(2).fillna(0)
+            daily_agg['% Менее 4-х (DUB)'] = (daily_agg['Менее 4-х (DUB)'] / daily_agg['Всего (DUB)'] * 100).round(2).fillna(0)
+            daily_agg['% Менее 4-х (ECRU)'] = (daily_agg['Менее 4-х (ECRU)'] / daily_agg['Всего (ECRU)'] * 100).round(2).fillna(0)
+            daily_agg['% Менее 4-х (MAAG)'] = (daily_agg['Менее 4-х (MAAG)'] / daily_agg['Всего (MAAG)'] * 100).round(2).fillna(0)
+            daily_agg['% Менее 4-х (VILET)'] = (daily_agg['Менее 4-х (VILET)'] / daily_agg['Всего (VILET)'] * 100).round(2).fillna(0)
 
             # Форматирование процентов с символом "%"
             for col in percentage_columns:
                 if col in daily_agg.columns:
-                    daily_agg[col] = daily_agg[col].apply(lambda x: f"{x}%")
+                    daily_agg[col] = daily_agg[col].apply(lambda x: f"{x:.2f}".replace('.', ',') + '%')
 
             # Форматирование даты
             daily_agg['Дата'] = daily_agg['Дата'].dt.strftime('%d.%m.%Y')
@@ -1422,16 +1432,16 @@ class DataProcessor:
             weekly_agg['Week'] = new_week
 
             # Расчет процентов для недельной агрегации
-            weekly_agg['% Менее 4-х'] = (weekly_agg['Менее 4-х'] / weekly_agg['Всего коробов'] * 100).round(1).fillna(0)
-            weekly_agg['% Менее 4-х (DUB)'] = (weekly_agg['Менее 4-х (DUB)'] / weekly_agg['Всего (DUB)'] * 100).round(1).fillna(0)
-            weekly_agg['% Менее 4-х (ECRU)'] = (weekly_agg['Менее 4-х (ECRU)'] / weekly_agg['Всего (ECRU)'] * 100).round(1).fillna(0)
-            weekly_agg['% Менее 4-х (MAAG)'] = (weekly_agg['Менее 4-х (MAAG)'] / weekly_agg['Всего (MAAG)'] * 100).round(1).fillna(0)
-            weekly_agg['% Менее 4-х (VILET)'] = (weekly_agg['Менее 4-х (VILET)'] / weekly_agg['Всего (VILET)'] * 100).round(1).fillna(0)
+            weekly_agg['% Менее 4-х'] = (weekly_agg['Менее 4-х'] / weekly_agg['Всего коробов'] * 100).round(2).fillna(0)
+            weekly_agg['% Менее 4-х (DUB)'] = (weekly_agg['Менее 4-х (DUB)'] / weekly_agg['Всего (DUB)'] * 100).round(2).fillna(0)
+            weekly_agg['% Менее 4-х (ECRU)'] = (weekly_agg['Менее 4-х (ECRU)'] / weekly_agg['Всего (ECRU)'] * 100).round(2).fillna(0)
+            weekly_agg['% Менее 4-х (MAAG)'] = (weekly_agg['Менее 4-х (MAAG)'] / weekly_agg['Всего (MAAG)'] * 100).round(2).fillna(0)
+            weekly_agg['% Менее 4-х (VILET)'] = (weekly_agg['Менее 4-х (VILET)'] / weekly_agg['Всего (VILET)'] * 100).round(2).fillna(0)
 
             # Форматирование процентов с символом "%"
             for col in percentage_columns:
                 if col in weekly_agg.columns:
-                    weekly_agg[col] = weekly_agg[col].apply(lambda x: f"{x}%")
+                    weekly_agg[col] = weekly_agg[col].apply(lambda x: f"{x:.2f}".replace('.', ',') + '%')
 
             # Порядок столбцов для недельной агрегации
             weekly_agg = weekly_agg[['Week', 'Всего коробов', 'Менее 4-х', '% Менее 4-х',
@@ -1593,15 +1603,15 @@ class DataProcessor:
                 }).reset_index()
                 
                 # Пересчитываем проценты
-                combined_daily['% Менее 4-х'] = (combined_daily['Менее 4-х'] / combined_daily['Всего коробов'] * 100).round(1).fillna(0)
-                combined_daily['% Менее 4-х (DUB)'] = (combined_daily['Менее 4-х (DUB)'] / combined_daily['Всего (DUB)'] * 100).round(1).fillna(0)
-                combined_daily['% Менее 4-х (ECRU)'] = (combined_daily['Менее 4-х (ECRU)'] / combined_daily['Всего (ECRU)'] * 100).round(1).fillna(0)
-                combined_daily['% Менее 4-х (MAAG)'] = (combined_daily['Менее 4-х (MAAG)'] / combined_daily['Всего (MAAG)'] * 100).round(1).fillna(0)
-                combined_daily['% Менее 4-х (VILET)'] = (combined_daily['Менее 4-х (VILET)'] / combined_daily['Всего (VILET)'] * 100).round(1).fillna(0)
+                combined_daily['% Менее 4-х'] = (combined_daily['Менее 4-х'] / combined_daily['Всего коробов'] * 100).round(2).fillna(0)
+                combined_daily['% Менее 4-х (DUB)'] = (combined_daily['Менее 4-х (DUB)'] / combined_daily['Всего (DUB)'] * 100).round(2).fillna(0)
+                combined_daily['% Менее 4-х (ECRU)'] = (combined_daily['Менее 4-х (ECRU)'] / combined_daily['Всего (ECRU)'] * 100).round(2).fillna(0)
+                combined_daily['% Менее 4-х (MAAG)'] = (combined_daily['Менее 4-х (MAAG)'] / combined_daily['Всего (MAAG)'] * 100).round(2).fillna(0)
+                combined_daily['% Менее 4-х (VILET)'] = (combined_daily['Менее 4-х (VILET)'] / combined_daily['Всего (VILET)'] * 100).round(2).fillna(0)
                 
                 # Форматируем процентные столбцы
                 for col in ['% Менее 4-х', '% Менее 4-х (DUB)', '% Менее 4-х (ECRU)', '% Менее 4-х (MAAG)', '% Менее 4-х (VILET)']:
-                    combined_daily[col] = combined_daily[col].apply(lambda x: f"{x}%")
+                    combined_daily[col] = combined_daily[col].apply(lambda x: f"{x:.2f}".replace('.', ',') + '%')
                 
                 # Устанавливаем порядок столбцов
                 combined_daily = combined_daily[['Дата', 'День недели', 'Всего коробов', 'Менее 4-х', '% Менее 4-х',
@@ -1655,6 +1665,11 @@ class DataProcessor:
                     last_file_index = files_to_process.index(self.aggregated_output_file)
                     last_weekly_df_rows = len(weekly_dfs[last_file_index])
                     combined_weekly.iloc[-last_weekly_df_rows:, combined_weekly.columns.get_loc('Week')] = max_week + 1
+                
+                # Форматируем процентные столбцы (формат: 0,00%)
+                for col in ['% Менее 4-х', '% Менее 4-х (DUB)', '% Менее 4-х (ECRU)', '% Менее 4-х (MAAG)', '% Менее 4-х (VILET)']:
+                    if col in combined_weekly.columns:
+                        combined_weekly[col] = combined_weekly[col].apply(lambda x: f"{x:.2f}".replace('.', ',') + '%')
                 
                 # Устанавливаем порядок столбцов
                 combined_weekly = combined_weekly[['Week', 'Всего коробов', 'Менее 4-х', '% Менее 4-х',
